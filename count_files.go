@@ -51,6 +51,11 @@ func countFiles(dirPath string) (int, error) {
 	// 遍历文件
 	count := 0
 	for _, file := range files {
+		// 排除一些隐藏文件
+		if file.Name()[0] == '.' {
+			continue
+		}
+
 		// 如果是目录，则递归获取文件个数
 		if file.IsDir() {
 			subCount, err := countFiles(dirPath + "/" + file.Name())
@@ -59,12 +64,7 @@ func countFiles(dirPath string) (int, error) {
 			}
 			count += subCount
 		} else {
-			// 排除一些隐藏文件
-			if file.Name()[0] == '.' {
-				continue
-			}
-
-			fmt.Println(file.Name())
+			//fmt.Println(file.Name())
 			count++
 		}
 	}
