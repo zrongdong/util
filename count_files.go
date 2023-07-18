@@ -2,6 +2,13 @@
 // 传入一个目录，递归攻击当前目录中的所有文件个数
 // 使用一个缓冲通道来进行并发处理。缓冲通道是为了控制并发量，防止并发过多导致内存溢出。
 // 因为读取目录的时候，是一个IO操作，需要将它放到一个goroutine里面去运行
+// 当然，你也可以直接执行Linux的命令可以完成一下操作
+// find . -type f | wc -l
+// 如果你想过滤掉文件名相同的文件的话，可以使用下面的命令
+// find . -type f | awk -F'/' '{print $NF}' | sort | uniq | wc -l
+// 如果你将文件名相同但是后缀不同的两个文件视为一个文件的话，可以使用下面的命令
+// find . -type f | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' | sort | uniq | wc -l
+// 以上命令是Copilot帮我写的，直呼牛逼，虽然很牛逼。但是肯定没有我的程序快
 
 package main
 
@@ -15,11 +22,11 @@ import (
 )
 
 // 创建一个files chan
-var files_chan = make(chan string, 100)
+var filesChan = make(chan string, 100)
 
 // 控制通道的数量 改变这个参数可以明显的看到运行时间的变化，但是不宜过高
 // 可以使用 ulimit -n 查看系统的最大打开文件数
-var chan_limit = make(chan bool, 100)
+var chanLimit = make(chan bool, 100)
 
 var wg sync.WaitGroup
 
@@ -47,7 +54,7 @@ func main() {
 
 	go func() {
 		wg.Wait()
-		close(files_chan)
+		close(filesChan)
 	}()
 
 	// 文件个数
@@ -57,7 +64,7 @@ func main() {
 	fileMap := make(map[string]int)
 
 	// 读取chan中的数据
-	for fileName := range files_chan {
+	for fileName := range filesChan {
 		//fmt.Println(fileName)
 
 		fileExt := path.Ext(fileName)
@@ -77,9 +84,9 @@ func main() {
 // 读取目录
 func readDir(dirPath string) {
 	// 限制goroutine数量
-	chan_limit <- true
+	chanLimit <- true
 	defer func() {
-		<-chan_limit
+		<-chanLimit
 		wg.Done()
 	}()
 
@@ -108,7 +115,7 @@ func readDir(dirPath string) {
 			wg.Add(1)
 			go readDir(dirPath + "/" + file.Name())
 		} else {
-			files_chan <- file.Name()
+			filesChan <- file.Name()
 		}
 	}
 }
